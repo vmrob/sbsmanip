@@ -1,0 +1,5 @@
+#!/usr/local/bin/python
+
+from SEGarbageCollect import app
+
+app.main(sys.argv[1:])

@@ -18,10 +18,13 @@ class Options(object):
                                  help='provide statistics on the savefile')
         self.parser.add_argument('--scale',
                                  dest='scale',
-                                 help='scales world by the provided scalar')
+                                 help='scale world by the provided scalar')
         self.parser.add_argument('--remove-far',
                                  dest='clip_distance',
-                                 help='removes entities farther than the provided distance')
+                                 help='remove entities farther than the provided distance')
+        self.parser.add_argument('--remove-debris',
+                                 dest='debris_size',
+                                 help='remove CubeGrid entities with less than the provided number of components')
     def parse(self, args=None):
         return self.parser.parse_args(args)
 
@@ -102,29 +105,44 @@ class App(object):
     def run(self):
         self._print_stats()
 
-        prepared = []
+        total_changed = []
+        p = []
+        mod = None
+        confirm_message = ''
+
         if self._opts.scale is not None:
-            mod = sbsmanip.modifier.Scale(self.savefile.sector, self._opts.scale)
-            p = mod.prepare()
-            self._print_prepared(p)
-            response = raw_input('scale the positions of these %d '
-                'objects by a factor of %d? [y/n] ' % (len(p), float(self._opts.scale)))
-            if response == 'y' or response == 'Y':
-                prepared.extend(p)
-                mod.execute(p)
+            self._exec_mod(
+                sbsmanip.modifier.Scale(self.savefile.sector, float(self._opts.scale)),
+                total_changed,
+                'scale the positions of %d %s'
+                    ' by a factor of ' + self._opts.scale + '? [y/n] ')
 
         if self._opts.clip_distance is not None:
-            mod = sbsmanip.modifier.RemoveFar(self.savefile.sector, float(self._opts.clip_distance))
-            p = mod.prepare()
-            self._print_prepared(p)
-            response = raw_input('remove these these %d objects? [y/n] ' % len(p))
-            if response == 'y' or response == 'Y':
-                prepared.extend(p)
-                mod.execute(p)
+            self._exec_mod(
+                sbsmanip.modifier.RemoveFar(self.savefile.sector, float(self._opts.clip_distance)),
+                total_changed,
+                'remove %d %s? [y/n] ')
 
-        if len(prepared):
-            print 'writing changes for %d entities' % len(prepared)
+        if self._opts.debris_size is not None:
+            self._exec_mod(
+                sbsmanip.modifier.RemoveSize(self.savefile.sector, 0, float(self._opts.debris_size)),
+                total_changed,
+                'remove %d %s? [y/n] ')
+
+        if total_changed:
+            print 'writing changes for %d %s' % (len(total_changed), 'entity' if len(total_changed) == 1 else 'entities')
             self.savefile.write(self.filename)
+
+    def _exec_mod(self, mod, total_changed, confirm_message):
+        prepared = mod.prepare()
+        if prepared:
+            self._print_prepared(prepared)
+            response = raw_input(confirm_message % (len(prepared), 'entity' if len(prepared) == 1 else 'entities'))
+            if response == 'y' or response == 'Y':
+                total_changed.extend(prepared)
+                mod.execute(prepared)
+        else:
+            print 'no applicable entities'
 
     def _print_prepared(self, prepared):
         for e in prepared:

@@ -44,6 +44,7 @@ def test_remove_far():
     prepared = mod.prepare()
 
     assert len(prepared) == 1
+    assert sector.entity_count() == 102
     mod.execute(prepared)
     assert sector.entity_count() == 101
 
@@ -53,3 +54,24 @@ def test_remove_far():
     assert len(prepared) == 101
     mod.execute(prepared)
     assert sector.entity_count() == 0
+
+def test_remove_debris():
+    savefile = sbsmanip.io.SBSFile('tests/support/SANDBOX_0_0_0_.sbs')
+    sector = savefile.sector
+
+    mod = sbsmanip.modifier.RemoveSize(sector, 0, 6)
+    prepared = mod.prepare()
+
+    assert len(prepared) == 1
+    assert sector.entity_count() == 102
+
+    mod.execute(prepared)
+    
+    assert sector.entity_count() == 101
+
+    mod = sbsmanip.modifier.RemoveSize(sector, 0, 10000)
+    prepared = mod.prepare()
+
+    assert len(prepared) == 19
+    mod.execute(prepared)
+    assert sector.entity_count() == 82

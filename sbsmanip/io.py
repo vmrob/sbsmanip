@@ -2,7 +2,6 @@ import xml.etree.ElementTree as ET
 
 import sector
 
-
 class _XMLFile(object):
 
     def __init__(self, filename):

@@ -1,5 +1,8 @@
 import sys
+import math
+
 import sbsmanip.io
+import sbsmanip.modifier
 
 from argparse import ArgumentParser
 
@@ -13,7 +16,12 @@ class Options(object):
         self.parser.add_argument('--show-stats',
                                  dest='show_stats',
                                  help='provide statistics on the savefile')
-
+        self.parser.add_argument('--scale',
+                                 dest='scale',
+                                 help='scales world by the provided scalar')
+        self.parser.add_argument('--remove-far',
+                                 dest='clip_distance',
+                                 help='removes entities farther than the provided distance')
     def parse(self, args=None):
         return self.parser.parse_args(args)
 
@@ -94,14 +102,48 @@ class App(object):
     def run(self):
         self._print_stats()
 
+        prepared = []
+        if self._opts.scale is not None:
+            mod = sbsmanip.modifier.Scale(self.savefile.sector, self._opts.scale)
+            p = mod.prepare()
+            self._print_prepared(p)
+            response = raw_input('scale the positions of these %d '
+                'objects by a factor of %d? [y/n] ' % (len(p), float(self._opts.scale)))
+            if response == 'y' or response == 'Y':
+                prepared.extend(p)
+                mod.execute(p)
+
+        if self._opts.clip_distance is not None:
+            mod = sbsmanip.modifier.RemoveFar(self.savefile.sector, float(self._opts.clip_distance))
+            p = mod.prepare()
+            self._print_prepared(p)
+            response = raw_input('remove these these %d objects? [y/n] ' % len(p))
+            if response == 'y' or response == 'Y':
+                prepared.extend(p)
+                mod.execute(p)
+
+        if len(prepared):
+            print 'writing changes for %d entities' % len(prepared)
+            self.savefile.write(self.filename)
+
+    def _print_prepared(self, prepared):
+        for e in prepared:
+            distance = math.sqrt(e.position.x**2 + e.position.y**2 + e.position.z**2) / 1000
+            if isinstance(e, sbsmanip.sector.CubeGridEntity):
+                print 'type:  %-18s  id:  %20s  distance: %8.2f km  components:  %5d' % (e.type_name(), e.id, distance, e.block_count())
+            else:
+                print 'type:  %-18s  id:  %20s  distance: %8.2f km' % (e.type_name(), e.id, distance)
+
     @staticmethod
     def _print_divider(width=__default_divider_width):
         print '=' * width
 
-
     def _print_stats(self):
 
         stats = Stats(self.savefile.sector)
+
+        if not self._opts.show_stats:
+            return
 
         param = self._opts.show_stats.split('|')
 

@@ -9,6 +9,9 @@ class _XMLFile(object):
         self._tree = ET.parse(filename)
         self._root = self._tree.getroot()
 
+    def write(self, filename):
+        self._tree.write(filename)
+
 
 class SBSFile(_XMLFile):
 

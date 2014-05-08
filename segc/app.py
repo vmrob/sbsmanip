@@ -29,23 +29,36 @@ class App:
         self._parse_opts(options, args)
 
     def _parse_opts(self, options, args):
-        opts = options.parse(args)
-        self.filename = opts.filename
+        self._opts = options.parse(args)
+        self.filename = self._opts.filename
         self.savefile = sbsmanip.io.SBSFile(self.filename)
 
-        self.show_stats = opts.show_stats
-        if self.show_stats:
+    def run(self):
+        if self._opts.show_stats:
             self._print_stats()
 
     def _print_stats(self):
-        print ('there are %d entities in the sector'
-               % self.savefile.entity_count())
+
+        sector = self.savefile.sector
+
+        total = sector.entity_count()
+        voxelmaps = sector.entity_count(sbsmanip.sector.VoxelMapEntity)
+        cubegrids = sector.entity_count(sbsmanip.sector.CubeGridEntity)
+        floating = sector.entity_count(sbsmanip.sector.FloatingObjectEntity)
+
+        print 'Sector Statistics'
+        print '======================='
+        print 'Total entities:   %4d' % total
+        print 'Asteroids:        %4d' % voxelmaps
+        print 'Ships/Stations:   %4d' % cubegrids
+        print 'Floating Objects: %4d' % floating
+        print '======================='
 
 
 def main(args):
     options = Options()
     app = App(options, args)
-
+    app.run()
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))

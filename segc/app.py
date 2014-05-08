@@ -35,6 +35,12 @@ class Options(object):
         self.parser.add_argument('--remove-ship',
                                  dest='target_ship',
                                  help='remove instances of a specific ship')
+        self.parser.add_argument('--scale-weld',
+                                 dest='build_time_scalar',
+                                 help='adjust the build time by a global scalar')
+        self.parser.add_argument('--scale-disassembly',
+                                 dest='disassembly_scalar',
+                                 help='adjust the diassembly ratio by a global scalar')
         self.parser.set_defaults(whitelist_beacons=False)
 
     def parse(self, args=None):
@@ -113,10 +119,45 @@ class App(object):
     def _parse_opts(self, options, args):
         self._opts = options.parse(args)
         self.filename = self._opts.filename
-        self.savefile = sbsmanip.io.SBSFile(self.filename)
 
     def run(self):
+        if self._opts.build_time_scalar is not None or self._opts.disassembly_scalar is not None:
+            self._run_cubeblocks_manip()
+        else:
+            self._run_savefile_manip()
+        
+    def _run_cubeblocks_manip(self):
+        savefile = sbsmanip.io.CubeBlocksSBC(self.filename)
+
+        changed = set()
+
+        if self._opts.build_time_scalar is not None:
+            mod = sbsmanip.modifier.ScaleAssemblyTime(savefile.definitions,
+                self._opts.build_time_scalar)
+            prepared = mod.prepare()
+            changed |= set(prepared)
+            mod.execute(prepared)
+
+        if self._opts.disassembly_scalar is not None:
+            mod = sbsmanip.modifier.ScaleDisassemblyTime(savefile.definitions,
+                self._opts.disassembly_scalar)
+            prepared = mod.prepare()
+            changed |= set(prepared)
+            mod.execute(prepared)
+
+        if changed:
+            print 'writing changes for %d %s' % (
+                len(changed),
+                'definition' if len(changed) == 1 else 'definitions')
+            savefile.write(self.filename)
+        else:
+            print 'no applicable definitions'
+
+
+    def _run_savefile_manip(self):
         self._print_stats()
+
+        self.savefile = sbsmanip.io.SBSFile(self.filename)
 
         total_changed = []
         white_list = []

@@ -2,6 +2,7 @@ import sbsmanip.io
 import sbsmanip.sector
 import sbsmanip.modifier
 
+
 def test_scale():
     savefile = sbsmanip.io.SBSFile('tests/support/SANDBOX_0_0_0_.sbs')
     sector = savefile.sector
@@ -12,8 +13,10 @@ def test_scale():
 
     assert len(prepared) == 102
 
-    e1 = next(e for e in savefile.sector.entities() if e.id == '1066294968834912967')
-    e2 = next(e for e in savefile.sector.entities() if e.id == '-2200846055786792018')
+    e1 = next(e for e in savefile.sector.entities()
+              if e.id == '1066294968834912967')
+    e2 = next(e for e in savefile.sector.entities()
+              if e.id == '-2200846055786792018')
 
     assert e1.id == '1066294968834912967'
     assert e2.id == '-2200846055786792018'
@@ -36,6 +39,7 @@ def test_scale():
     assert e2.position.y == -10490.0464
     assert e2.position.z == 19089.9719
 
+
 def test_remove_far():
     savefile = sbsmanip.io.SBSFile('tests/support/SANDBOX_0_0_0_.sbs')
     sector = savefile.sector
@@ -55,6 +59,7 @@ def test_remove_far():
     mod.execute(prepared)
     assert sector.entity_count() == 0
 
+
 def test_remove_debris():
     savefile = sbsmanip.io.SBSFile('tests/support/SANDBOX_0_0_0_.sbs')
     sector = savefile.sector
@@ -66,7 +71,7 @@ def test_remove_debris():
     assert sector.entity_count() == 102
 
     mod.execute(prepared)
-    
+
     assert sector.entity_count() == 101
 
     mod = sbsmanip.modifier.RemoveSize(sector, 0, 10000)
@@ -75,3 +80,26 @@ def test_remove_debris():
     assert len(prepared) == 19
     mod.execute(prepared)
     assert sector.entity_count() == 82
+
+
+def test_remove_ship():
+    savefile = sbsmanip.io.SBSFile('tests/support/SANDBOX_0_0_0_.sbs')
+    target_file = sbsmanip.io.XMLFile('tests/support/RespawnShip.sbc')
+    target = sbsmanip.sector.CubeGridEntity(target_file.root)
+
+    sector = savefile.sector
+
+    mod = sbsmanip.modifier.RemoveShip(sector, target)
+    prepared = mod.prepare()
+
+    assert len(prepared) == 10
+    assert sector.entity_count() == 102
+
+    mod.execute(prepared)
+
+    assert sector.entity_count() == 92
+
+    mod = sbsmanip.modifier.RemoveShip(sector, target)
+    prepared = mod.prepare()
+
+    assert len(prepared) == 0

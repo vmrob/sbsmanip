@@ -32,6 +32,9 @@ class Options(object):
                                  help='do not delete ships with both a power '
                                       'source and a beacon',
                                  action='store_true')
+        self.parser.add_argument('--remove-ship',
+                                 dest='target_ship',
+                                 help='remove instances of a specific ship')
         self.parser.set_defaults(whitelist_beacons=False)
 
     def parse(self, args=None):
@@ -146,6 +149,16 @@ class App(object):
             self._exec_mod(
                 sbsmanip.modifier.RemoveSize(
                     self.savefile.sector, 0, float(self._opts.debris_size)),
+                total_changed,
+                'remove %d %s? [y/n] ',
+                white_list)
+
+        if self._opts.target_ship is not None:
+            target_ship = sbsmanip.io.XMLFile(self._opts.target_ship)
+            target = sbsmanip.sector.CubeGridEntity(target_ship.root)
+            self._exec_mod(
+                sbsmanip.modifier.RemoveShip(
+                    self.savefile.sector, target),
                 total_changed,
                 'remove %d %s? [y/n] ',
                 white_list)

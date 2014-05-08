@@ -21,10 +21,19 @@ class Options(object):
                                  help='scale world by the provided scalar')
         self.parser.add_argument('--remove-far',
                                  dest='clip_distance',
-                                 help='remove entities farther than the provided distance')
+                                 help='remove entities farther than the '
+                                      'provided distance')
         self.parser.add_argument('--remove-debris',
                                  dest='debris_size',
-                                 help='remove CubeGrid entities with less than the provided number of components')
+                                 help='remove CubeGrid entities with less '
+                                      'than the provided number of components')
+        self.parser.add_argument('--whitelist-beacons',
+                                 dest='whitelist_beacons',
+                                 help='do not delete ships with both a power '
+                                      'source and a beacon',
+                                 action='store_true')
+        self.parser.set_defaults(whitelist_beacons=False)
+
     def parse(self, args=None):
         return self.parser.parse_args(args)
 
@@ -55,20 +64,21 @@ class Stats(object):
         print 'Floating Objects: %4d' % floating
 
     def print_sector_distribution(self):
-        
+
         sector = self._sector_node
         block_dist = sector.block_distribution()
 
         App._print_divider()
         print 'Sector Block Distribution'
-        for q in ('Armor', 'Reactor', 'Thrust', 'Cargo', 'Conveyor', 'Cockpit', 'Window', None):
+        for q in ('Armor', 'Reactor', 'Thrust', 'Cargo',
+                  'Conveyor', 'Cockpit', 'Window', None):
             Stats._print_dict(block_dist, q)
-   
+
     def print_station_stats(self):
-        sector = self._sector_node
+        pass
 
     def print_ship_stats(self):
-        pass 
+        pass
 
     @staticmethod
     def _print_dict(d, filter=None):
@@ -83,8 +93,8 @@ class Stats(object):
         for k in filtered:
             total += filtered[k]
         print '  %-32s total: %5d' % ((filter if filter else 'Misc'), total)
-        App._print_divider()            
-        
+        App._print_divider()
+
         for k in sorted(filtered):
             print '%-41s %5d' % (k, filtered[k])
             d.pop(k, None)
@@ -106,38 +116,55 @@ class App(object):
         self._print_stats()
 
         total_changed = []
-        p = []
-        mod = None
-        confirm_message = ''
+        white_list = []
+        if self._opts.whitelist_beacons:
+            white_list = [e for e in self.savefile.sector.entities(
+                sbsmanip.sector.CubeGridEntity) if
+                e.power_sources() and e.beacons()]
+
+        for e in white_list:
+            print ('ignoring %20s due to powered beacon on board: %s'
+                   % (e.id, ', '.join(e.beacon_names())))
 
         if self._opts.scale is not None:
             self._exec_mod(
-                sbsmanip.modifier.Scale(self.savefile.sector, float(self._opts.scale)),
+                sbsmanip.modifier.Scale(
+                    self.savefile.sector, float(self._opts.scale)),
                 total_changed,
                 'scale the positions of %d %s'
-                    ' by a factor of ' + self._opts.scale + '? [y/n] ')
+                ' by a factor of ' + self._opts.scale + '? [y/n] ')
 
         if self._opts.clip_distance is not None:
             self._exec_mod(
-                sbsmanip.modifier.RemoveFar(self.savefile.sector, float(self._opts.clip_distance)),
+                sbsmanip.modifier.RemoveFar(
+                    self.savefile.sector, float(self._opts.clip_distance)),
                 total_changed,
-                'remove %d %s? [y/n] ')
+                'remove %d %s? [y/n] ',
+                white_list)
 
         if self._opts.debris_size is not None:
             self._exec_mod(
-                sbsmanip.modifier.RemoveSize(self.savefile.sector, 0, float(self._opts.debris_size)),
+                sbsmanip.modifier.RemoveSize(
+                    self.savefile.sector, 0, float(self._opts.debris_size)),
                 total_changed,
-                'remove %d %s? [y/n] ')
+                'remove %d %s? [y/n] ',
+                white_list)
 
         if total_changed:
-            print 'writing changes for %d %s' % (len(total_changed), 'entity' if len(total_changed) == 1 else 'entities')
+            print 'writing changes for %d %s' % (
+                len(total_changed),
+                'entity' if len(total_changed) == 1 else 'entities')
             self.savefile.write(self.filename)
 
-    def _exec_mod(self, mod, total_changed, confirm_message):
+    def _exec_mod(self, mod, total_changed, confirm_message, white_list=[]):
         prepared = mod.prepare()
+        white_list_ids = [e.id for e in white_list]
+        prepared = [e for e in prepared if e.id not in white_list_ids]
         if prepared:
             self._print_prepared(prepared)
-            response = raw_input(confirm_message % (len(prepared), 'entity' if len(prepared) == 1 else 'entities'))
+            response = raw_input(confirm_message % (
+                len(prepared),
+                'entity' if len(prepared) == 1 else 'entities'))
             if response == 'y' or response == 'Y':
                 total_changed.extend(prepared)
                 mod.execute(prepared)
@@ -146,11 +173,27 @@ class App(object):
 
     def _print_prepared(self, prepared):
         for e in prepared:
-            distance = math.sqrt(e.position.x**2 + e.position.y**2 + e.position.z**2) / 1000
+            distance = math.sqrt(
+                e.position.x**2 +
+                e.position.y**2 +
+                e.position.z**2) / 1000
             if isinstance(e, sbsmanip.sector.CubeGridEntity):
-                print 'type:  %-18s  id:  %20s  distance: %8.2f km  components:  %5d' % (e.type_name(), e.id, distance, e.block_count())
+                beacons = e.beacons()
+                if beacons:
+                    print ('type:  %-18s  id:  %20s  distance: %8.2f km  '
+                           'components:  %5d  beacons:  %s'
+                           % (e.type_name(),
+                              e.id,
+                              distance,
+                              e.block_count(),
+                              ', '.join(e.beacon_names())))
+                else:
+                    print ('type:  %-18s  id:  %20s  distance: %8.2f km  '
+                           'components:  %5d'
+                           % (e.type_name(), e.id, distance, e.block_count()))
             else:
-                print 'type:  %-18s  id:  %20s  distance: %8.2f km' % (e.type_name(), e.id, distance)
+                print ('type:  %-18s  id:  %20s  distance: %8.2f km'
+                       % (e.type_name(), e.id, distance))
 
     @staticmethod
     def _print_divider(width=__default_divider_width):

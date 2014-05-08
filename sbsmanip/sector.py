@@ -29,6 +29,9 @@ class Block(object):
         if id is not None and id.text is not None:
             return id
 
+    def complete(self):
+        return self.block_node.find('BuildPercent') is None
+
     def type_name(self):
         subtype = self.subtype_name()
         builder = self.builder_name()
@@ -72,6 +75,7 @@ class _EntityBase(object):
             '{http://www.w3.org/2001/XMLSchema-instance}type')
         return name.replace('MyObjectBuilder_', '', 1)
 
+
 class VoxelMapEntity(_EntityBase):
     pass
 
@@ -91,7 +95,8 @@ class CubeGridEntity(_EntityBase):
         self._blocks = self.entity_node.find(
             'CubeBlocks').findall('MyObjectBuilder_CubeBlock')
         self._static_node = self.entity_node.find('IsStatic')
-        self._static = self._static_node is not None and self._static_node.text == 'true'
+        self._static = (self._static_node is not None
+                        and self._static_node.text == 'true')
 
     def block_count(self):
         return len(self._blocks)
@@ -107,9 +112,26 @@ class CubeGridEntity(_EntityBase):
             d[name] += 1
         return d
 
+    def beacons(self):
+        return [b for b in self.blocks()
+                if "Beacon" in b.type_name() and b.complete()]
+
+    def beacon_names(self):
+        return [b.custom_name()
+                if b.custom_name() else "unknown"
+                for b in self.beacons()]
+
+    def power_sources(self):
+        sources = [b for b in self.blocks()
+                   if "Reactor" in b.type_name() and b.complete()]
+        sources.extend([b for b in self.blocks()
+                        if "Solar" in b.type_name() and b.complete()])
+        return sources
+
     @property
     def static(self):
         return self._static
+
     @static.setter
     def static(self, value):
         self._static_node.text = 'true' if value else 'false'
@@ -145,7 +167,8 @@ class Sector(object):
         return count
 
     def entities(self, entity_type=_EntityBase):
-        for entity in self._sector_objects.findall('MyObjectBuilder_EntityBase'):
+        for entity in self._sector_objects.findall(
+                'MyObjectBuilder_EntityBase'):
             e = EntityFactory(entity)
             if isinstance(e, entity_type):
                 yield e

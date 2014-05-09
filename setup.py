@@ -15,12 +15,7 @@ config = {
     'install_requires': ['nose'],
     'packages': ['sbsmanip', 'segc'],
     'scripts': [
-        'bin/segc',
-        'bin/plot_sector.py',
-        'bin/remove_debris.py',
-        'bin/remove_objects.py',
-        'bin/remove_ship.py',
-        'bin/scale_world.py'
+        'bin/segc'
     ],
     'name': 'sbsmanip'
 }

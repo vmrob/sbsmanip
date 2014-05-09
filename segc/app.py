@@ -127,19 +127,21 @@ class App(object):
             self._run_savefile_manip()
         
     def _run_cubeblocks_manip(self):
-        savefile = sbsmanip.io.CubeBlocksSBC(self.filename)
+        self.savefile = sbsmanip.io.CubeBlocksSBC(self.filename)
 
         changed = set()
 
         if self._opts.build_time_scalar is not None:
-            mod = sbsmanip.modifier.ScaleAssemblyTime(savefile.definitions,
+            mod = sbsmanip.modifier.ScaleAssemblyTime(
+                self.savefile.definitions,
                 self._opts.build_time_scalar)
             prepared = mod.prepare()
             changed |= set(prepared)
             mod.execute(prepared)
 
         if self._opts.disassembly_scalar is not None:
-            mod = sbsmanip.modifier.ScaleDisassemblyTime(savefile.definitions,
+            mod = sbsmanip.modifier.ScaleDisassemblyTime(
+                self.savefile.definitions,
                 self._opts.disassembly_scalar)
             prepared = mod.prepare()
             changed |= set(prepared)
@@ -149,15 +151,15 @@ class App(object):
             print 'writing changes for %d %s' % (
                 len(changed),
                 'definition' if len(changed) == 1 else 'definitions')
-            savefile.write(self.filename)
+            self.savefile.write(self.filename)
         else:
             print 'no applicable definitions'
 
 
     def _run_savefile_manip(self):
-        self._print_stats()
-
         self.savefile = sbsmanip.io.SBSFile(self.filename)
+
+        self._print_stats()
 
         total_changed = []
         white_list = []

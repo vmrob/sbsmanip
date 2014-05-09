@@ -15,7 +15,7 @@ config = {
     'install_requires': ['nose'],
     'packages': ['sbsmanip', 'segc'],
     'scripts': [
-        'bin/segc'
+        'bin/segc.py'
     ],
     'name': 'sbsmanip'
 }

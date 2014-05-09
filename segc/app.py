@@ -43,8 +43,8 @@ class Options(object):
                                  help='adjust the diassembly ratio by a global scalar')
         self.parser.set_defaults(whitelist_beacons=False)
 
-    def parse(self, args=None):
-        return self.parser.parse_args(args)
+    def parse(self):
+        return self.parser.parse_args()
 
     def print_usage(self):
         self.parser.print_help()
@@ -113,11 +113,11 @@ class App(object):
 
     __default_divider_width = 48
 
-    def __init__(self, options, args):
-        self._parse_opts(options, args)
+    def __init__(self, options):
+        self._parse_opts(options)
 
-    def _parse_opts(self, options, args):
-        self._opts = options.parse(args)
+    def _parse_opts(self, options):
+        self._opts = options.parse()
         self.filename = self._opts.filename
 
     def run(self):
@@ -280,10 +280,10 @@ class App(object):
             stats.print_sector_distribution()
 
 
-def main(args):
+def main():
     options = Options()
-    app = App(options, args)
+    app = App(options)
     app.run()
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())

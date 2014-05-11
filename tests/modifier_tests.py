@@ -105,11 +105,27 @@ def test_remove_ship():
     assert len(prepared) == 0
 
 
+def test_remove_all():
+    savefile = sbsmanip.io.SBSFile('tests/support/SANDBOX_0_0_0_.sbs')
+    sector = savefile.sector
+
+    mod = sbsmanip.modifier.RemoveAll(sector)
+    prepared = mod.prepare()
+
+    assert len(prepared) == sector.entity_count()
+
+    mod.execute(prepared)
+
+    assert sector.entity_count() == 0
+
+
 def test_modify_welding():
     cube_blocks_sbc = sbsmanip.io.CubeBlocksSBC('tests/support/CubeBlocks.sbc')
 
-    mod1 = sbsmanip.modifier.ScaleAssemblyTime(cube_blocks_sbc.definitions, 0.1)
-    mod2 = sbsmanip.modifier.ScaleDisassemblyTime(cube_blocks_sbc.definitions, 10)
+    mod1 = sbsmanip.modifier.ScaleAssemblyTime(
+        cube_blocks_sbc.definitions, 0.1)
+    mod2 = sbsmanip.modifier.ScaleDisassemblyTime(
+        cube_blocks_sbc.definitions, 10)
 
     prepared1 = mod1.prepare()
     prepared2 = mod2.prepare()
@@ -117,7 +133,8 @@ def test_modify_welding():
     assert len(prepared1) == 118
     assert len(prepared2) == 118
 
-    block = next(d for d in prepared1 if d.type_name() == 'CubeBlock:LargeBlockArmorBlock')
+    block = next(d for d in prepared1 if d.type_name() ==
+                 'CubeBlock:LargeBlockArmorBlock')
 
     assert block.build_time == 8
     assert block.disassembly_ratio == 2.5

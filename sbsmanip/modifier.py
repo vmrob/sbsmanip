@@ -66,6 +66,18 @@ class RemoveShip(object):
         self._sector.remove_entities(prepared)
 
 
+class RemoveAll(object):
+
+    def __init__(self, sector):
+        self._sector = sector
+
+    def prepare(self):
+        return [e for e in self._sector.entities()]
+
+    def execute(self, prepared):
+        self._sector.remove_entities(prepared)
+
+
 class ScaleAssemblyTime(object):
 
     def __init__(self, definitions, scalar):
@@ -78,6 +90,7 @@ class ScaleAssemblyTime(object):
     def execute(self, prepared):
         for d in prepared:
             d.build_time = d.build_time * float(self._scalar)
+
 
 class ScaleDisassemblyTime(object):
 

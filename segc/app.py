@@ -20,28 +20,39 @@ class Options(object):
                                  dest='scale',
                                  help='scale world by the provided scalar')
         self.parser.add_argument('--remove-far',
-                                 dest='clip_distance',
+                                 dest='distance',
                                  help='remove entities farther than the '
                                       'provided distance')
         self.parser.add_argument('--remove-debris',
                                  dest='debris_size',
                                  help='remove CubeGrid entities with less '
-                                      'than the provided number of components')
-        self.parser.add_argument('--whitelist-beacons',
-                                 dest='whitelist_beacons',
-                                 help='do not delete ships with both a power '
-                                      'source and a beacon',
+                                      'than DEBRIS_SIZE components')
+        self.parser.add_argument('--remove-all',
+                                 dest='remove_all',
+                                 help='remove all entities from the game '
+                                 'world, used best with white-list flags',
                                  action='store_true')
+        self.parser.set_defaults(whitelist_beacons=True)
+        self.parser.add_argument('--whitelist',
+                                 dest='whitelist',
+                                 help='whitelist entities matching criteria. '
+                                 'Valid options are beacons, players, '
+                                 'asteroids. To use multiple criteria,'
+                                 'separate them with a pipe symbol. Example: '
+                                 '--whitelist beacons|players|asteroids')
         self.parser.add_argument('--remove-ship',
                                  dest='target_ship',
-                                 help='remove instances of a specific ship')
+                                 help='remove instances of a specific ship. '
+                                 'TARGET_SHIP is the path to a valid .sbc '
+                                 'file')
         self.parser.add_argument('--scale-weld',
                                  dest='build_time_scalar',
-                                 help='adjust the build time by a global scalar')
+                                 help='adjust the build time by a global '
+                                 'scalar')
         self.parser.add_argument('--scale-disassembly',
                                  dest='disassembly_scalar',
-                                 help='adjust the diassembly ratio by a global scalar')
-        self.parser.set_defaults(whitelist_beacons=False)
+                                 help='adjust the diassembly ratio by a '
+                                 'global scalar')
 
     def parse(self):
         return self.parser.parse_args()
@@ -121,11 +132,12 @@ class App(object):
         self.filename = self._opts.filename
 
     def run(self):
-        if self._opts.build_time_scalar is not None or self._opts.disassembly_scalar is not None:
+        if (self._opts.build_time_scalar is not None or
+                self._opts.disassembly_scalar is not None):
             self._run_cubeblocks_manip()
         else:
             self._run_savefile_manip()
-        
+
     def _run_cubeblocks_manip(self):
         self.savefile = sbsmanip.io.CubeBlocksSBC(self.filename)
 
@@ -155,22 +167,29 @@ class App(object):
         else:
             print 'no applicable definitions'
 
-
     def _run_savefile_manip(self):
         self.savefile = sbsmanip.io.SBSFile(self.filename)
 
         self._print_stats()
 
         total_changed = []
-        white_list = []
-        if self._opts.whitelist_beacons:
-            white_list = [e for e in self.savefile.sector.entities(
-                sbsmanip.sector.CubeGridEntity) if
-                e.power_sources() and e.beacons()]
 
-        for e in white_list:
-            print ('ignoring %20s due to powered beacon on board: %s'
-                   % (e.id, ', '.join(e.beacon_names())))
+        whitelist = self._get_whitelist()
+
+        for e in whitelist:
+            if type(e) == sbsmanip.sector.CubeGridEntity:
+                print ('ignoring %20s due to powered beacon on board: %s'
+                       % (e.id, ', '.join(e.beacon_names())))
+            else:
+                print 'ignoring %20s' % e.id
+
+        if self._opts.remove_all:
+            self._exec_mod(
+                sbsmanip.modifier.RemoveAll(
+                    self.savefile.sector),
+                total_changed,
+                'remove %d %s? [y/n] ',
+                whitelist)
 
         if self._opts.scale is not None:
             self._exec_mod(
@@ -180,13 +199,13 @@ class App(object):
                 'scale the positions of %d %s'
                 ' by a factor of ' + self._opts.scale + '? [y/n] ')
 
-        if self._opts.clip_distance is not None:
+        if self._opts.distance is not None:
             self._exec_mod(
                 sbsmanip.modifier.RemoveFar(
-                    self.savefile.sector, float(self._opts.clip_distance)),
+                    self.savefile.sector, float(self._opts.distance)),
                 total_changed,
                 'remove %d %s? [y/n] ',
-                white_list)
+                whitelist)
 
         if self._opts.debris_size is not None:
             self._exec_mod(
@@ -194,7 +213,7 @@ class App(object):
                     self.savefile.sector, 0, float(self._opts.debris_size)),
                 total_changed,
                 'remove %d %s? [y/n] ',
-                white_list)
+                whitelist)
 
         if self._opts.target_ship is not None:
             target_ship = sbsmanip.io.XMLFile(self._opts.target_ship)
@@ -204,7 +223,7 @@ class App(object):
                     self.savefile.sector, target),
                 total_changed,
                 'remove %d %s? [y/n] ',
-                white_list)
+                whitelist)
 
         if total_changed:
             print 'writing changes for %d %s' % (
@@ -212,10 +231,10 @@ class App(object):
                 'entity' if len(total_changed) == 1 else 'entities')
             self.savefile.write(self.filename)
 
-    def _exec_mod(self, mod, total_changed, confirm_message, white_list=[]):
+    def _exec_mod(self, mod, total_changed, confirm_message, whitelist=[]):
         prepared = mod.prepare()
-        white_list_ids = [e.id for e in white_list]
-        prepared = [e for e in prepared if e.id not in white_list_ids]
+        whitelist_ids = [e.id for e in whitelist]
+        prepared = [e for e in prepared if e.id not in whitelist_ids]
         if prepared:
             self._print_prepared(prepared)
             response = raw_input(confirm_message % (
@@ -254,6 +273,27 @@ class App(object):
     @staticmethod
     def _print_divider(width=__default_divider_width):
         print '=' * width
+
+    def _get_whitelist(self):
+        whitelist = []
+
+        if not self._opts.whitelist:
+            return whitelist
+
+        params = self._opts.whitelist.split('|')
+
+        if 'beacons' in params:
+            whitelist.extend([e for e in self.savefile.sector.entities(
+                sbsmanip.sector.CubeGridEntity) if
+                e.power_sources() and e.beacons()])
+        if 'asteroids' in params:
+            whitelist.extend([e for e in self.savefile.sector.entities(
+                sbsmanip.sector.VoxelMapEntity)])
+        if 'players' in params:
+            whitelist.extend([e for e in self.savefile.sector.entities(
+                sbsmanip.sector.CharacterEntity)])
+
+        return whitelist
 
     def _print_stats(self):
 

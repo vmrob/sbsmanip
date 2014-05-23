@@ -88,6 +88,10 @@ class CharacterEntity(_EntityBase):
     pass
 
 
+class MeteorEntity(_EntityBase):
+    pass
+
+
 class CubeGridEntity(_EntityBase):
 
     def __init__(self, entity_node):
@@ -149,6 +153,8 @@ def EntityFactory(entity_node):
         return FloatingObjectEntity(entity_node)
     elif type_name == 'Character':
         return CharacterEntity(entity_node)
+    elif type_name == 'Meteor':
+        return MeteorEntity(entity_node)
     print '%s is an invalid type_name' % type_name
     raise
 

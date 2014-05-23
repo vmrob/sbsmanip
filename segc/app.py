@@ -32,6 +32,10 @@ class Options(object):
                                  help='remove all entities from the game '
                                  'world, used best with white-list flags',
                                  action='store_true')
+        self.parser.add_argument('--remove-pure-armor',
+                                 dest='remove_armored',
+                                 help='remove ships that are made of only armor',
+                                 action='store_true')
         self.parser.set_defaults(whitelist_beacons=True)
         self.parser.add_argument('--whitelist',
                                  dest='whitelist',
@@ -187,6 +191,30 @@ class App(object):
             self._exec_mod(
                 sbsmanip.modifier.RemoveAll(
                     self.savefile.sector),
+                total_changed,
+                'remove %d %s? [y/n] ',
+                whitelist)
+
+        if self._opts.remove_armored:
+            self._exec_mod(
+                sbsmanip.modifier.RemovePure(
+                    self.savefile.sector,
+                    ['LargeBlockArmorBlock', 
+                     'LargeBlockArmorCorner', 
+                     'LargeBlockArmorCornerInv', 
+                     'LargeBlockArmorSlope', 
+                     'LargeHeavyBlockArmorBlock', 
+                     'LargeHeavyBlockArmorCorner', 
+                     'LargeHeavyBlockArmorCornerInv', 
+                     'LargeHeavyBlockArmorSlope', 
+                     'SmallBlockArmorBlock', 
+                     'SmallBlockArmorCorner', 
+                     'SmallBlockArmorCornerInv', 
+                     'SmallBlockArmorSlope', 
+                     'SmallHeavyBlockArmorBlock', 
+                     'SmallHeavyBlockArmorCorner', 
+                     'SmallHeavyBlockArmorCornerInv', 
+                     'SmallHeavyBlockArmorSlope']),
                 total_changed,
                 'remove %d %s? [y/n] ',
                 whitelist)

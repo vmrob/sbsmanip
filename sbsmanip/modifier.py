@@ -78,6 +78,30 @@ class RemoveAll(object):
         self._sector.remove_entities(prepared)
 
 
+class RemovePure(object):
+
+    def __init__(self, sector, whitelist):
+        '''Will remove all ships that are made purely of the elements listed in the whitelist'''
+        self._sector = sector
+        self._whitelist = whitelist
+
+    def prepare(self):
+        entities = [e for e in self._sector.entities(sector.CubeGridEntity)]
+        ret = []
+        for e in entities:
+            should_delete = True
+            for k in e.block_distribution():
+                if k not in self._whitelist:
+                    should_delete = False
+                    break
+            if should_delete:
+                ret.append(e)
+        return ret
+
+    def execute(self, prepared):
+        self._sector.remove_entities(prepared)
+
+
 class ScaleAssemblyTime(object):
 
     def __init__(self, definitions, scalar):

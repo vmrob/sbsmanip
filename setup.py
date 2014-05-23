@@ -11,7 +11,7 @@ setup(
     url='https://github.com/vmrob/sbsmanip',
     download_url='https://github.com/vmrob/sbsmanip/archive/0.1.1.tar.gz',
     author_email='victor.robertson.iv@gmail.com',
-    version='0.1.2',
+    version='0.2.0',
     install_requires=['nose'],
     packages=['segc', 'sbsmanip'],
     entry_points={

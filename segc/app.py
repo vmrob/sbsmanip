@@ -36,6 +36,10 @@ class Options(object):
                                  dest='remove_armored',
                                  help='remove ships that are made of only armor',
                                  action='store_true')
+        self.parser.add_argument('--force',
+                                 dest='force',
+                                 help='don\'t ask for approval, assume yes',
+                                 action='store_true')
         self.parser.set_defaults(whitelist_beacons=True)
         self.parser.add_argument('--whitelist',
                                  dest='whitelist',
@@ -265,9 +269,12 @@ class App(object):
         prepared = [e for e in prepared if e.id not in whitelist_ids]
         if prepared:
             self._print_prepared(prepared)
-            response = raw_input(confirm_message % (
-                len(prepared),
-                'entity' if len(prepared) == 1 else 'entities'))
+            if self._opts.force:
+                response = 'y'
+            else:
+                response = raw_input(confirm_message % (
+                    len(prepared),
+                    'entity' if len(prepared) == 1 else 'entities'))
             if response == 'y' or response == 'Y':
                 total_changed.extend(prepared)
                 mod.execute(prepared)

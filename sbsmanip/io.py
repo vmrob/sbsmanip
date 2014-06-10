@@ -26,4 +26,4 @@ class CubeBlocksSBC(XMLFile):
     def __init__(self, filename):
         super(CubeBlocksSBC, self).__init__(filename)
         self.definitions = [cubeblocks.Definition(d) for d in self.root.find(
-            'Definitions').findall('Definition')]
+            'CubeBlocks').findall('Definition')]

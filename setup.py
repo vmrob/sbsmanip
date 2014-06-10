@@ -10,7 +10,7 @@ setup(
     license='MIT License',
     url='https://github.com/vmrob/sbsmanip',
     author_email='victor.robertson.iv@gmail.com',
-    version='0.3.0',
+    version='0.3.1',
     install_requires=['nose'],
     packages=['segc', 'sbsmanip'],
     entry_points={
